@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Genómico de E. coli - UNSAAC</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    
+    <!-- Librerías externas (CDN) -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">🧬</div>
+                <h2 class="logo-text">GenomeAnalyzer</h2>
+            </div>
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+                <span class="toggle-icon">☰</span>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            
+            <div class="nav-group">
+                <div class="nav-group-title">Análisis Genómico</div>
+                <a href="#genome-stats" class="nav-item" data-section="genome-stats">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Estadísticas</span>
+                </a>
+                <a href="#genome-viewer" class="nav-item" data-section="genome-viewer">
+                    <span class="nav-icon">🔬</span>
+                    <span class="nav-text">Visualización</span>
+                </a>
+                <a href="#gene-search" class="nav-item" data-section="gene-search">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-text">Buscar Genes</span>
+                </a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-group-title">Comparación</div>
+                <a href="#compare-genomes" class="nav-item" data-section="compare-genomes">
+                    <span class="nav-icon">⚖️</span>
+                    <span class="nav-text">Comparar Genomas</span>
+                </a>
+                <a href="#compare-viewer" class="nav-item" data-section="compare-viewer">
+                    <span class="nav-icon">👁️</span>
+                    <span class="nav-text">Vista Dual</span>
+                </a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-group-title">Modificador Genético</div>
+                <a href="#protein-search" class="nav-item" data-section="protein-search">
+                    <span class="nav-icon">🔎</span>
+                    <span class="nav-text">Buscar Proteína</span>
+                </a>
+                <a href="#protein-analyze" class="nav-item" data-section="protein-analyze">
+                    <span class="nav-icon">🧪</span>
+                    <span class="nav-text">Análisis Completo</span>
+                </a>
+                <a href="#protein-viewer" class="nav-item" data-section="protein-viewer">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-text">Propuesta de Diseño</span>
+                </a>
+            </div>
+
+            <div class="nav-group nav-group-future">
+                <div class="nav-group-title">Herramientas <span class="badge">Próximamente</span></div>
+                <a href="#" class="nav-item disabled">
+                    <span class="nav-icon">🤖</span>
+                    <span class="nav-text">Biólogo IA</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-text">Chatbot</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-text">Exportar PDF</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="footer-info">
+                <div class="footer-item">
+                    <span class="footer-label">Pipeline:</span>
+                    <span class="footer-value" id="pipeline-version">v2.0.0</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Cache:</span>
+                    <span class="footer-value" id="cache-status">...</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section active">
+            <header class="section-header">
+                <h1 class="section-title">Dashboard</h1>
+                <p class="section-subtitle">Análisis Genómico de <em>Escherichia coli</em></p>
+            </header>
+
+            <div class="cards-grid">
+                <div class="stat-card">
+                    <div class="stat-card-icon">🧬</div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value" id="total-genomes">0</div>
+                        <div class="stat-card-label">Genomas Disponibles</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">📊</div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value" id="total-analyses">0</div>
+                        <div class="stat-card-label">Análisis Realizados</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">🔬</div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value" id="total-comparisons">0</div>
+                        <div class="stat-card-label">Comparaciones</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">🎯</div>
+                    <div class="stat-card-content">
+                        <div class="stat-card-value" id="total-designs">0</div>
+                        <div class="stat-card-label">Diseños Genéticos</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="card">
+                    <h3 class="card-title">Acciones Rápidas</h3>
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="window.app.navigateTo('genome-stats')">
+                            <span class="btn-icon">📈</span>
+                            Analizar Genoma
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.app.navigateTo('compare-genomes')">
+                            <span class="btn-icon">⚖️</span>
+                            Comparar Genomas
+                        </button>
+                        <button class="btn btn-accent" onclick="window.app.navigateTo('protein-search')">
+                            <span class="btn-icon">🧪</span>
+                            Modificador Genético
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Análisis Recientes</h3>
+                    <div id="recent-analyses" class="recent-list">
+                        <p class="text-muted">No hay análisis recientes</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Genome Stats Section -->
+        <section id="genome-stats" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Estadísticas del Genoma</h1>
+                <p class="section-subtitle">Análisis completo de un genoma de <em>E. coli</em></p>
+            </header>
+
+            <div class="card">
+                <div class="form-group">
+                    <label for="genome-select">Seleccionar Genoma</label>
+                    <select id="genome-select" class="form-control">
+                        <option value="">Cargando genomas...</option>
+                    </select>
+                </div>
+                <button id="analyze-genome-btn" class="btn btn-primary">
+                    <span class="btn-icon">📊</span>
+                    Analizar Genoma
+                </button>
+            </div>
+
+            <div id="genome-results" class="results-container" style="display: none;">
+                <!-- Resultados se cargan dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Genome Viewer Section -->
+        <section id="genome-viewer" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Visualización Interactiva</h1>
+                <p class="section-subtitle">Vista circular del genoma con inspector de secuencias</p>
+            </header>
+
+            <div class="viewer-container">
+                <div class="viewer-controls card">
+                    <select id="viewer-genome-select" class="form-control">
+                        <option value="">Seleccionar genoma...</option>
+                    </select>
+                    <button id="load-viewer-btn" class="btn btn-primary">Cargar Visualización</button>
+                </div>
+
+                <div class="viewer-main">
+                    <div id="circular-viewer" class="circular-viewer">
+                        <!-- D3.js circular visualization -->
+                    </div>
+                    <div id="sequence-inspector" class="sequence-inspector" style="display: none;">
+                        <!-- Canvas sequence inspector -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gene Search Section -->
+        <section id="gene-search" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Búsqueda de Genes</h1>
+                <p class="section-subtitle">Encuentra genes específicos en el genoma</p>
+            </header>
+
+            <div class="card">
+                <div class="search-bar">
+                    <input type="text" id="gene-search-input" class="form-control" placeholder="Buscar por nombre, locus_tag o producto...">
+                    <button id="gene-search-btn" class="btn btn-primary">
+                        <span class="btn-icon">🔍</span>
+                        Buscar
+                    </button>
+                </div>
+                
+                <div class="search-filters">
+                    <input type="number" id="gene-min-length" class="form-control" placeholder="Longitud mínima">
+                    <input type="number" id="gene-max-length" class="form-control" placeholder="Longitud máxima">
+                    <select id="gene-sort" class="form-control">
+                        <option value="length">Ordenar por longitud</option>
+                        <option value="gc">Ordenar por GC</option>
+                        <option value="name">Ordenar por nombre</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="gene-results" class="results-container">
+                <!-- Resultados de búsqueda -->
+            </div>
+        </section>
+
+        <!-- Compare Genomes Section -->
+        <section id="compare-genomes" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Comparar Genomas</h1>
+                <p class="section-subtitle">Análisis comparativo de dos genomas de <em>E. coli</em></p>
+            </header>
+
+            <div class="card">
+                <div class="compare-form">
+                    <div class="form-group">
+                        <label for="compare-genome1">Genoma A</label>
+                        <select id="compare-genome1" class="form-control">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="compare-genome2">Genoma B</label>
+                        <select id="compare-genome2" class="form-control">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="compare-btn" class="btn btn-primary">
+                    <span class="btn-icon">⚖️</span>
+                    Comparar Genomas
+                </button>
+            </div>
+
+            <div id="compare-results" class="results-container" style="display: none;">
+                <!-- Resultados de comparación -->
+            </div>
+        </section>
+
+        <!-- Protein Search Section -->
+        <section id="protein-search" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Buscar Proteína</h1>
+                <p class="section-subtitle">Busca proteínas en UniProt para análisis de compatibilidad</p>
+            </header>
+
+            <div class="card">
+                <div class="form-group">
+                    <label for="protein-query">Buscar proteína</label>
+                    <input type="text" id="protein-query" class="form-control" placeholder="Ej: insulin, lacZ, beta-galactosidase...">
+                </div>
+                <div class="form-group">
+                    <label for="protein-organism">Organismo (opcional)</label>
+                    <input type="text" id="protein-organism" class="form-control" placeholder="Ej: Homo sapiens">
+                </div>
+                <button id="search-protein-btn" class="btn btn-primary">
+                    <span class="btn-icon">🔎</span>
+                    Buscar en UniProt
+                </button>
+            </div>
+
+            <div id="protein-results" class="results-container">
+                <!-- Resultados de búsqueda de proteínas -->
+            </div>
+        </section>
+
+        <!-- Protein Analyze Section -->
+        <section id="protein-analyze" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Análisis de Compatibilidad</h1>
+                <p class="section-subtitle">Análisis completo de diseño genético in-silico</p>
+            </header>
+
+            <div class="card">
+                <div class="form-group">
+                    <label for="protein-id">ID de Proteína (UniProt)</label>
+                    <input type="text" id="protein-id" class="form-control" placeholder="Ej: P01308">
+                </div>
+                <div class="form-group">
+                    <label for="target-genome">Genoma Objetivo</label>
+                    <select id="target-genome" class="form-control">
+                        <option value="NC_000913.3">E. coli K-12 MG1655</option>
+                    </select>
+                </div>
+                <button id="analyze-protein-btn" class="btn btn-accent">
+                    <span class="btn-icon">🧪</span>
+                    Analizar Compatibilidad
+                </button>
+            </div>
+
+            <div id="protein-analysis-results" class="results-container" style="display: none;">
+                <!-- Resultados del análisis -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p class="loading-text">Procesando...</p>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/main.js" type="module"></script>
+    <script src="/static/js/genome-viewer.js" type="module"></script>
+    <script src="/static/js/charts.js" type="module"></script>
+</body>
+</html>
