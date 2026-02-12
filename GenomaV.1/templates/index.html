@@ -225,6 +225,57 @@
             </div>
         </section>
 
+        <!-- Compare Viewer Section (DUAL VIEW) -->
+        <section id="compare-viewer" class="content-section">
+            <header class="section-header">
+                <h1 class="section-title">Vista Dual de Comparación</h1>
+                <p class="section-subtitle">Visualización lado a lado de dos genomas</p>
+            </header>
+
+            <div class="card">
+                <div class="compare-form">
+                    <div class="form-group">
+                        <label for="dual-genome1">Genoma A</label>
+                        <select id="dual-genome1" class="form-control">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dual-genome2">Genoma B</label>
+                        <select id="dual-genome2" class="form-control">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="load-dual-viewer-btn" class="btn btn-primary">Cargar Comparación Visual</button>
+            </div>
+
+            <div id="dual-viewer-container" class="viewer-main" style="display: none;">
+                <div class="dual-viewer-grid">
+                    <div class="dual-viewer-panel">
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">Genoma A</h3>
+                        <div id="circular-viewer-1" class="circular-viewer"></div>
+                    </div>
+                    <div class="dual-viewer-panel">
+                        <h3 style="color: var(--primary-light); margin-bottom: 1rem;">Genoma B</h3>
+                        <div id="circular-viewer-2" class="circular-viewer"></div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1rem;">
+                    <h3 class="card-title">Comparación Rápida</h3>
+                    <div id="dual-stats"></div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Resumen Visual</h3>
+                    <div class="chart-container">
+                        <canvas id="dual-comparison-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Gene Search Section -->
         <section id="gene-search" class="content-section">
             <header class="section-header">
