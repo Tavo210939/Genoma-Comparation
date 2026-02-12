@@ -124,13 +124,16 @@ class GenomeAnalysisService:
             print(f"✓ Análisis de codones CDS obtenido del cache")
             return cached
         
-        print(f"🧬 Analizando codones en CDS...")
+        print(f"🧬 Analizando codones en CDS (con detección de falsos)...")
         
         codon_counter = Counter()
         start_counter = Counter({"ATG": 0, "GTG": 0, "TTG": 0, "OTROS": 0})
         stop_counter = Counter({"TAA": 0, "TAG": 0, "TGA": 0})
         
         cds_problematic = []
+        false_starts = []  # NUEVO: Codones de inicio falsos
+        false_stops = []   # NUEVO: Codones de parada falsos
+        
         total_cds = 0
         valid_cds = 0
         
@@ -178,6 +181,25 @@ class GenomeAnalysisService:
                 codons = [seq[i:i+3] for i in range(0, len(seq), 3) 
                          if len(seq[i:i+3]) == 3]
                 
+                # NUEVO: Detectar codones falsos dentro del CDS
+                locus_tag = feature.qualifiers.get("locus_tag", ["-"])[0]
+                for idx, codon in enumerate(codons[1:-1], start=1):  # Excluir primero y último
+                    # Start codons en medio del CDS (falsos)
+                    if codon in ["ATG", "GTG", "TTG"]:
+                        false_starts.append({
+                            'locus_tag': locus_tag,
+                            'position': idx,
+                            'codon': codon
+                        })
+                    
+                    # Stop codons antes del final (falsos)
+                    if codon in ["TAA", "TAG", "TGA"]:
+                        false_stops.append({
+                            'locus_tag': locus_tag,
+                            'position': idx,
+                            'codon': codon
+                        })
+                
                 # Contar todos los codones
                 for codon in codons:
                     codon_counter[codon] += 1
@@ -205,11 +227,15 @@ class GenomeAnalysisService:
             'start_codons': dict(start_counter),
             'stop_codons': dict(stop_counter),
             'cds_problematic': cds_problematic[:20],  # Primeros 20
+            'false_starts': false_starts[:50],  # NUEVO: Primeros 50
+            'false_stops': false_stops[:50],    # NUEVO: Primeros 50
             'statistics': {
                 'total_cds': total_cds,
                 'valid_cds': valid_cds,
                 'problematic_cds': len(cds_problematic),
-                'validity_rate': (valid_cds / total_cds * 100) if total_cds > 0 else 0
+                'validity_rate': (valid_cds / total_cds * 100) if total_cds > 0 else 0,
+                'false_starts_count': len(false_starts),  # NUEVO
+                'false_stops_count': len(false_stops)     # NUEVO
             }
         }
         
@@ -217,6 +243,7 @@ class GenomeAnalysisService:
         self.cache.cache_analysis(genome_id, 'codons_cds', result)
         
         print(f"✓ Análisis completado: {valid_cds}/{total_cds} CDS válidos")
+        print(f"✓ Codones falsos: {len(false_starts)} starts, {len(false_stops)} stops")
         return result
     
     def _extract_cds_correctly(self, feature, record) -> Dict[str, Any]:
@@ -622,6 +649,124 @@ def get_analysis_service() -> GenomeAnalysisService:
         _analysis_service_instance = GenomeAnalysisService()
     
     return _analysis_service_instance
+
+
+# ================================================================
+# VALIDACIÓN CON LITERATURA CIENTÍFICA
+# ================================================================
+
+def validate_with_literature(genome_stats: dict) -> dict:
+    """
+    Valida estadísticas del genoma contra rangos esperados de literatura.
+    
+    Rangos basados en:
+    - Blattner et al. (1997) - E. coli K-12 MG1655
+    - Riley et al. (2006) - Genomas de E. coli
+    - Serres et al. (2001) - Análisis genómico
+    
+    Returns:
+        Dict con validaciones y alertas
+    """
+    validations = {
+        'gene_count': {'status': 'unknown', 'expected': '4,200-4,600', 'found': 0, 'message': ''},
+        'gc_content': {'status': 'unknown', 'expected': '50-52%', 'found': 0, 'message': ''},
+        'genome_length': {'status': 'unknown', 'expected': '4.5-5.5 Mb', 'found': 0, 'message': ''},
+        'start_codon_distribution': {'status': 'unknown', 'expected': 'ATG >83%', 'found': 0, 'message': ''},
+        'coding_percentage': {'status': 'unknown', 'expected': '85-88%', 'found': 0, 'message': ''},
+        'overall_status': 'pass',
+        'warnings': [],
+        'errors': []
+    }
+    
+    # 1. Gene count (4200-4600 para E. coli K-12)
+    gene_count = genome_stats.get('genome', {}).get('gene_count', 0)
+    validations['gene_count']['found'] = gene_count
+    
+    if 4200 <= gene_count <= 4600:
+        validations['gene_count']['status'] = 'pass'
+        validations['gene_count']['message'] = 'Número de genes en rango esperado'
+    elif 4000 <= gene_count < 4200 or 4600 < gene_count <= 4800:
+        validations['gene_count']['status'] = 'warning'
+        validations['gene_count']['message'] = 'Número de genes fuera del rango típico pero aceptable'
+        validations['warnings'].append('Gene count slightly outside expected range')
+    else:
+        validations['gene_count']['status'] = 'error'
+        validations['gene_count']['message'] = 'Número de genes significativamente diferente del esperado'
+        validations['errors'].append('Gene count significantly different from expected')
+        validations['overall_status'] = 'fail'
+    
+    # 2. GC Content (50-52% para E. coli)
+    gc_content = genome_stats.get('genome', {}).get('gc_content', 0)
+    validations['gc_content']['found'] = f"{gc_content}%"
+    
+    if 50 <= gc_content <= 52:
+        validations['gc_content']['status'] = 'pass'
+        validations['gc_content']['message'] = 'GC content en rango esperado para E. coli'
+    elif 48 <= gc_content < 50 or 52 < gc_content <= 54:
+        validations['gc_content']['status'] = 'warning'
+        validations['gc_content']['message'] = 'GC content ligeramente fuera del rango'
+        validations['warnings'].append('GC content outside typical range')
+    else:
+        validations['gc_content']['status'] = 'error'
+        validations['gc_content']['message'] = 'GC content muy diferente del esperado (posible contaminación)'
+        validations['errors'].append('GC content significantly different')
+        validations['overall_status'] = 'fail'
+    
+    # 3. Genome length (4.5-5.5 Mb para E. coli)
+    genome_length = genome_stats.get('genome', {}).get('length', 0)
+    length_mb = genome_length / 1_000_000
+    validations['genome_length']['found'] = f"{length_mb:.2f} Mb"
+    
+    if 4.5 <= length_mb <= 5.5:
+        validations['genome_length']['status'] = 'pass'
+        validations['genome_length']['message'] = 'Longitud del genoma en rango esperado'
+    elif 4.2 <= length_mb < 4.5 or 5.5 < length_mb <= 5.8:
+        validations['genome_length']['status'] = 'warning'
+        validations['genome_length']['message'] = 'Longitud fuera del rango típico'
+        validations['warnings'].append('Genome length outside typical range')
+    else:
+        validations['genome_length']['status'] = 'error'
+        validations['genome_length']['message'] = 'Longitud muy diferente de lo esperado'
+        validations['errors'].append('Genome length significantly different')
+        validations['overall_status'] = 'fail'
+    
+    # 4. Start codon distribution (ATG should be >83% in E. coli)
+    start_codons = genome_stats.get('codon_analysis', {}).get('cds', {}).get('start_codons', {})
+    total_starts = sum(start_codons.values())
+    atg_percentage = (start_codons.get('ATG', 0) / total_starts * 100) if total_starts > 0 else 0
+    validations['start_codon_distribution']['found'] = f"{atg_percentage:.1f}% ATG"
+    
+    if atg_percentage >= 83:
+        validations['start_codon_distribution']['status'] = 'pass'
+        validations['start_codon_distribution']['message'] = 'Distribución de codones de inicio esperada'
+    elif 80 <= atg_percentage < 83:
+        validations['start_codon_distribution']['status'] = 'warning'
+        validations['start_codon_distribution']['message'] = 'ATG ligeramente bajo'
+        validations['warnings'].append('ATG usage lower than expected')
+    else:
+        validations['start_codon_distribution']['status'] = 'error'
+        validations['start_codon_distribution']['message'] = 'Distribución de codones de inicio anormal'
+        validations['errors'].append('Start codon distribution abnormal')
+        validations['overall_status'] = 'fail'
+    
+    # 5. Coding percentage (85-88% para E. coli)
+    coding_pct = genome_stats.get('compactness', {}).get('coding_percentage', 0)
+    validations['coding_percentage']['found'] = f"{coding_pct}%"
+    
+    if 85 <= coding_pct <= 88:
+        validations['coding_percentage']['status'] = 'pass'
+        validations['coding_percentage']['message'] = 'Porcentaje de región codificante esperado'
+    elif 82 <= coding_pct < 85 or 88 < coding_pct <= 90:
+        validations['coding_percentage']['status'] = 'warning'
+        validations['coding_percentage']['message'] = 'Región codificante fuera del rango típico'
+        validations['warnings'].append('Coding percentage outside typical range')
+    else:
+        validations['coding_percentage']['status'] = 'error'
+        validations['coding_percentage']['message'] = 'Porcentaje codificante muy diferente'
+        validations['errors'].append('Coding percentage significantly different')
+        validations['overall_status'] = 'fail'
+    
+    return validations
 
 
 # ================================================================
