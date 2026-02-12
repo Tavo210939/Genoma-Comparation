@@ -131,21 +131,34 @@ def get_genome_stats(genome_id):
             genome_id
         )
         
-        # Validación con literatura
-        validation = analysis_service.validate_with_literature(genome, codon_analysis)
-        
         # Espacios intergénicos
         intergenic_spaces = analysis_service.analyze_intergenic_spaces(genome, top_n=10)
         
+        # Construir stats completos para validación
+        genome_stats = {
+            'genome': {
+                'accession': genome.accession,
+                'organism': genome.organism,
+                'length': genome.length,
+                'gc_content': round(genome.gc_content, 2),
+                'gene_count': genome.gene_count
+            },
+            'compactness': {
+                'coding_length': genome.coding_length,
+                'coding_percentage': round(genome.coding_percentage, 2),
+                'non_coding_length': genome.non_coding_length,
+                'gene_density': round(genome.gene_density, 2)
+            },
+            'codon_analysis': codon_analysis
+        }
+        
+        # NUEVO: Validación con literatura científica
+        from services.genome_analysis import validate_with_literature
+        validation = validate_with_literature(genome_stats)
+        
         # Respuesta completa
         return jsonify({
-            "genome": {
-                "accession": genome.accession,
-                "organism": genome.organism,
-                "length": genome.length,
-                "gc_content": round(genome.gc_content, 2),
-                "gene_count": genome.gene_count
-            },
+            "genome": genome_stats['genome'],
             "genes": {
                 "total": genome.gene_count,
                 "valid": codon_analysis['statistics']['valid_cds'],
@@ -164,7 +177,11 @@ def get_genome_stats(genome_id):
                     "start_codons": codon_analysis['start_codons'],
                     "stop_codons": codon_analysis['stop_codons'],
                     "gc_position": codon_analysis['gc_position'],
-                    "total_codons": codon_analysis['total_count']
+                    "total_codons": codon_analysis['total_count'],
+                    "false_starts": codon_analysis.get('false_starts', []),
+                    "false_stops": codon_analysis.get('false_stops', []),
+                    "false_starts_count": codon_analysis.get('statistics', {}).get('false_starts_count', 0),
+                    "false_stops_count": codon_analysis.get('statistics', {}).get('false_stops_count', 0)
                 },
                 "genome_wide": {
                     "ATG": triplets_genome['total'].get('ATG', 0),
@@ -293,7 +310,7 @@ def compare_genomes():
             },
             "summary": {
                 "similar": abs(genome2.gc_content - genome1.gc_content) < 2.0,
-                "gene_difference_pct": abs(genome2.gene_count - genome1.gene_count) / genome1.gene_count * 100
+                "gene_difference_pct": abs(genome2.gene_count - genome1.gene_count) / genome1.gene_count * 100 if genome1.gene_count > 0 else 0
             }
         })
         
