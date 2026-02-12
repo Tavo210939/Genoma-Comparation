@@ -664,6 +664,61 @@ label {
   justify-content: center;
 }
 
+/* Dual Viewer Específico */
+.dual-viewer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.dual-viewer-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.dual-viewer-panel .circular-viewer {
+  min-height: 500px;
+}
+
+@media (max-width: 1200px) {
+  .dual-viewer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sequence-inspector {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  min-height: 400px;
+}
+
+/* Contenedores de gráficos - Tamaño fijo */
+.chart-container {
+  position: relative;
+  height: 300px;
+  max-height: 400px;
+  margin: var(--spacing-lg) 0;
+  padding: var(--spacing-md);
+}
+
+.chart-container canvas {
+  max-height: 100% !important;
+  width: 100% !important;
+}
+
+/* Cards de resultados */
+.results-container .card {
+  margin-bottom: var(--spacing-lg);
+}
+
+.results-container .card canvas {
+  max-height: 350px !important;
+}
+
 .sequence-inspector {
   background: var(--surface);
   border: 1px solid var(--border);
