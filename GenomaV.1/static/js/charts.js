@@ -682,6 +682,234 @@ class ChartsManager {
     });
   }
 
+  // NUEVO: Gráfico de validación científica
+  renderValidationChart(canvasId, validationData) {
+    const canvas = this.getCanvas(canvasId);
+    if (!canvas) return;
+
+    this.destroyChart(canvasId);
+
+    const labels = ['Genes', 'GC%', 'Longitud', 'Start Codons', 'Coding%'];
+    const statuses = [
+      validationData.gene_count?.status || 'unknown',
+      validationData.gc_content?.status || 'unknown',
+      validationData.genome_length?.status || 'unknown',
+      validationData.start_codon_distribution?.status || 'unknown',
+      validationData.coding_percentage?.status || 'unknown'
+    ];
+
+    const data = statuses.map(status => {
+      if (status === 'pass') return 100;
+      if (status === 'warning') return 60;
+      if (status === 'error') return 20;
+      return 0;
+    });
+
+    const colors = statuses.map(status => {
+      if (status === 'pass') return this.defaultColors.success;
+      if (status === 'warning') return this.defaultColors.warning;
+      if (status === 'error') return this.defaultColors.danger;
+      return '#9CA3AF';
+    });
+
+    const ctx = canvas.getContext('2d');
+
+    this.charts[canvasId] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Estado de Validación',
+          data: data,
+          backgroundColor: colors,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Validación con Literatura Científica',
+            font: {
+              size: 16,
+              weight: 'bold'
+            },
+            color: '#1F2937',
+            padding: 20
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const status = statuses[context.dataIndex];
+                return `Estado: ${status.toUpperCase()}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: false,
+            max: 100
+          },
+          y: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // NUEVO: Gráfico de codones falsos
+  renderFalseCodonsChart(canvasId, falseStarts, falseStops, totalGenes) {
+    const canvas = this.getCanvas(canvasId);
+    if (!canvas) return;
+
+    this.destroyChart(canvasId);
+
+    const ctx = canvas.getContext('2d');
+
+    const falseStartsPct = (falseStarts / totalGenes * 100).toFixed(2);
+    const falseStopsPct = (falseStops / totalGenes * 100).toFixed(2);
+
+    this.charts[canvasId] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: [
+          `Start Falsos (${falseStartsPct}%)`,
+          `Stop Falsos (${falseStopsPct}%)`,
+          `Genes Sin Falsos`
+        ],
+        datasets: [{
+          data: [falseStarts, falseStops, totalGenes - falseStarts - falseStops],
+          backgroundColor: [
+            this.defaultColors.info,
+            this.defaultColors.warning,
+            this.defaultColors.success
+          ],
+          borderWidth: 2,
+          borderColor: '#FFFFFF'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 15,
+              usePointStyle: true
+            }
+          },
+          title: {
+            display: true,
+            text: 'Distribución de Codones Falsos',
+            font: {
+              size: 16,
+              weight: 'bold'
+            },
+            color: '#1F2937',
+            padding: 20
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                return `${label}: ${value.toLocaleString()} genes`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // NUEVO: Gráfico combinado de comparación genómica
+  renderGenomeComparisonSummary(canvasId, genome1, genome2) {
+    const canvas = this.getCanvas(canvasId);
+    if (!canvas) return;
+
+    this.destroyChart(canvasId);
+
+    const ctx = canvas.getContext('2d');
+
+    this.charts[canvasId] = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Longitud (Mb)', 'Genes (miles)', 'GC%', 'Coding%', 'Gene Density'],
+        datasets: [
+          {
+            label: genome1.organism || 'Genoma 1',
+            data: [
+              (genome1.length / 1000000).toFixed(2),
+              (genome1.gene_count / 1000).toFixed(2),
+              genome1.gc_content,
+              genome1.coding_percentage,
+              (genome1.gene_count / (genome1.length / 1000000)).toFixed(2)
+            ],
+            borderColor: this.defaultColors.primary,
+            backgroundColor: 'rgba(124, 58, 237, 0.2)',
+            borderWidth: 2,
+            pointRadius: 4
+          },
+          {
+            label: genome2.organism || 'Genoma 2',
+            data: [
+              (genome2.length / 1000000).toFixed(2),
+              (genome2.gene_count / 1000).toFixed(2),
+              genome2.gc_content,
+              genome2.coding_percentage,
+              (genome2.gene_count / (genome2.length / 1000000)).toFixed(2)
+            ],
+            borderColor: this.defaultColors.primaryLight,
+            backgroundColor: 'rgba(167, 139, 250, 0.2)',
+            borderWidth: 2,
+            pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top'
+          },
+          title: {
+            display: true,
+            text: 'Comparación Genómica Multidimensional',
+            font: {
+              size: 16,
+              weight: 'bold'
+            },
+            color: '#1F2937',
+            padding: 20
+          }
+        },
+        scales: {
+          r: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            },
+            angleLines: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          }
+        }
+      }
+    });
+  }
+
   // ============================================
   // DESTRUIR TODOS LOS GRÁFICOS
   // ============================================
